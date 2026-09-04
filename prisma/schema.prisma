@@ -1,0 +1,278 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CANDIDATE
+  COMPANY
+  ADMIN
+}
+
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+}
+
+enum PermissionLevel {
+  OWNER
+  CREATOR
+  EVALUATOR
+}
+
+enum ProblemType {
+  CODING
+  MCQ
+  WRITTEN
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum AssessmentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+}
+
+enum AttemptStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  SUBMITTED
+  EVALUATED
+  EXPIRED
+}
+
+enum SubmissionStatus {
+  PENDING
+  EVALUATED
+}
+
+enum PaymentProvider {
+  SSLCOMMERZ
+  BKASH
+  STRIPE
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+model User {
+  id           String       @id @default(uuid())
+  email        String       @unique
+  passwordHash String?
+  provider     AuthProvider @default(LOCAL)
+  googleId     String?      @unique
+  role         Role
+  name         String
+  avatarUrl    String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  deletedAt    DateTime?
+
+  candidateProfile     CandidateProfile?
+  companiesOwned       Company[]         @relation("CompanyOwner")
+  companyMemberships   CompanyMember[]
+  createdProblems      Problem[]         @relation("ProblemCreator")
+  createdAssessments   Assessment[]      @relation("AssessmentCreator")
+  attempts             Attempt[]
+  evaluatedSubmissions Submission[]      @relation("SubmissionEvaluator")
+  auditLogs            AuditLog[]
+
+  @@index([role])
+}
+
+model CandidateProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id])
+  resumeUrl       String?
+  skills          String[]
+  experienceLevel String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Company {
+  id        String    @id @default(uuid())
+  name      String
+  ownerId   String
+  owner     User      @relation("CompanyOwner", fields: [ownerId], references: [id])
+  credits   Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  members     CompanyMember[]
+  problems    Problem[]
+  assessments Assessment[]
+  payments    Payment[]
+
+  @@index([ownerId])
+}
+
+model CompanyMember {
+  id              String          @id @default(uuid())
+  companyId       String
+  company         Company         @relation(fields: [companyId], references: [id])
+  userId          String
+  user            User            @relation(fields: [userId], references: [id])
+  permissionLevel PermissionLevel
+  createdAt       DateTime        @default(now())
+
+  @@unique([companyId, userId])
+}
+
+model Problem {
+  id            String      @id @default(uuid())
+  companyId     String
+  company       Company     @relation(fields: [companyId], references: [id])
+  type          ProblemType
+  title         String
+  statement     String
+  difficulty    Difficulty
+  tags          String[]
+  points        Int         @default(0)
+  testCases     Json?
+  options       Json?
+  correctAnswer String?
+  createdById   String
+  createdBy     User        @relation("ProblemCreator", fields: [createdById], references: [id])
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  deletedAt     DateTime?
+
+  assessmentProblems AssessmentProblem[]
+  submissions        Submission[]
+
+  @@index([companyId, type, difficulty])
+}
+
+model Assessment {
+  id              String           @id @default(uuid())
+  companyId       String
+  company         Company          @relation(fields: [companyId], references: [id])
+  title           String
+  description     String?
+  status          AssessmentStatus @default(DRAFT)
+  durationMinutes Int
+  passingScore    Int
+  createdById     String
+  createdBy       User             @relation("AssessmentCreator", fields: [createdById], references: [id])
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  deletedAt       DateTime?
+
+  problems    AssessmentProblem[]
+  invitations Invitation[]
+  attempts    Attempt[]
+
+  @@index([companyId, status])
+}
+
+model AssessmentProblem {
+  id           String     @id @default(uuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id])
+  problemId    String
+  problem      Problem    @relation(fields: [problemId], references: [id])
+  order        Int
+  points       Int
+
+  @@unique([assessmentId, problemId])
+}
+
+model Invitation {
+  id             String           @id @default(uuid())
+  assessmentId   String
+  assessment     Assessment       @relation(fields: [assessmentId], references: [id])
+  candidateEmail String
+  token          String           @unique
+  status         InvitationStatus @default(PENDING)
+  expiresAt      DateTime
+  createdAt      DateTime         @default(now())
+
+  @@index([assessmentId, status])
+}
+
+model Attempt {
+  id            String        @id @default(uuid())
+  assessmentId  String
+  assessment    Assessment    @relation(fields: [assessmentId], references: [id])
+  candidateId   String
+  candidate     User          @relation(fields: [candidateId], references: [id])
+  status        AttemptStatus @default(NOT_STARTED)
+  startedAt     DateTime?
+  submittedAt   DateTime?
+  score         Int?
+  flaggedEvents Json?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  submissions Submission[]
+
+  @@unique([assessmentId, candidateId])
+}
+
+model Submission {
+  id            String           @id @default(uuid())
+  attemptId     String
+  attempt       Attempt          @relation(fields: [attemptId], references: [id])
+  problemId     String
+  problem       Problem          @relation(fields: [problemId], references: [id])
+  answer        Json
+  status        SubmissionStatus @default(PENDING)
+  autoScore     Int?
+  manualScore   Int?
+  evaluatedById String?
+  evaluatedBy   User?            @relation("SubmissionEvaluator", fields: [evaluatedById], references: [id])
+  evaluatedAt   DateTime?
+  createdAt     DateTime         @default(now())
+
+  @@unique([attemptId, problemId])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id])
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+}
+
+model Payment {
+  id             String          @id @default(uuid())
+  companyId      String
+  company        Company         @relation(fields: [companyId], references: [id])
+  provider       PaymentProvider
+  transactionId  String          @unique
+  amount         Decimal         @db.Decimal(10, 2)
+  currency       String          @default("BDT")
+  creditsGranted Int?
+  status         PaymentStatus   @default(PENDING)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([companyId, status])
+}

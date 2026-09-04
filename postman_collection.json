@@ -1,0 +1,576 @@
+{
+  "info": {
+    "name": "Developer Assessment & Coding Platform",
+    "description": "Full API collection. Run a Login request first to populate {{accessToken}} — most requests inherit collection-level bearer auth. Seed data (from prisma:seed) pre-fills companyId and problemId; other IDs (assessmentId, attemptId, submissionId, paymentId, invitationToken) are captured automatically by test scripts on the request that creates them, as long as you run requests roughly top-to-bottom within a folder.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000/api/v1" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "companyId", "value": "seed-company-acme" },
+    { "key": "problemId", "value": "seed-problem-mcq" },
+    { "key": "assessmentId", "value": "" },
+    { "key": "attemptId", "value": "" },
+    { "key": "submissionId", "value": "" },
+    { "key": "paymentId", "value": "" },
+    { "key": "transactionId", "value": "" },
+    { "key": "invitationToken", "value": "" },
+    { "key": "userId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Candidate\",\n  \"email\": \"newcandidate@example.dev\",\n  \"password\": \"Password123!\",\n  \"role\": \"CANDIDATE\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth", "register"] }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "if (pm.response.code === 201) {",
+              "  const data = pm.response.json();",
+              "  pm.collectionVariables.set('accessToken', data.data.accessToken);",
+              "  pm.collectionVariables.set('refreshToken', data.data.refreshToken);",
+              "}"
+            ]}
+          }]
+        },
+        {
+          "name": "Login (Owner)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"owner@acme.dev\",\n  \"password\": \"Password123!\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "const data = pm.response.json();",
+              "pm.collectionVariables.set('accessToken', data.data.accessToken);",
+              "pm.collectionVariables.set('refreshToken', data.data.refreshToken);"
+            ]}
+          }]
+        },
+        {
+          "name": "Login (Evaluator)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"evaluator@acme.dev\",\n  \"password\": \"Password123!\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "const data = pm.response.json();",
+              "pm.collectionVariables.set('accessToken', data.data.accessToken);",
+              "pm.collectionVariables.set('refreshToken', data.data.refreshToken);"
+            ]}
+          }]
+        },
+        {
+          "name": "Login (Candidate)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"candidate@example.dev\",\n  \"password\": \"Password123!\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "const data = pm.response.json();",
+              "pm.collectionVariables.set('accessToken', data.data.accessToken);",
+              "pm.collectionVariables.set('refreshToken', data.data.refreshToken);"
+            ]}
+          }]
+        },
+        {
+          "name": "Login (Admin)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@platform.dev\",\n  \"password\": \"Password123!\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "const data = pm.response.json();",
+              "pm.collectionVariables.set('accessToken', data.data.accessToken);",
+              "pm.collectionVariables.set('refreshToken', data.data.refreshToken);"
+            ]}
+          }]
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/refresh-token", "host": ["{{baseUrl}}"], "path": ["auth", "refresh-token"] }
+          }
+        },
+        {
+          "name": "Google Login (stub — 501 until configured)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"idToken\": \"placeholder\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/google", "host": ["{{baseUrl}}"], "path": ["auth", "google"] }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/auth/logout", "host": ["{{baseUrl}}"], "path": ["auth", "logout"] }
+          }
+        },
+        {
+          "name": "Get Me",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/auth/me", "host": ["{{baseUrl}}"], "path": ["auth", "me"] }
+          }
+        },
+        {
+          "name": "Update Me",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Updated Name\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/me", "host": ["{{baseUrl}}"], "path": ["auth", "me"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Companies",
+      "item": [
+        {
+          "name": "Create Company (only for a fresh COMPANY user — seeded owner already has one)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"New Co\"\n}" },
+            "url": { "raw": "{{baseUrl}}/companies", "host": ["{{baseUrl}}"], "path": ["companies"] }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "if (pm.response.code === 201) {",
+              "  pm.collectionVariables.set('companyId', pm.response.json().data.id);",
+              "}"
+            ]}
+          }]
+        },
+        {
+          "name": "Get Company",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/companies/{{companyId}}", "host": ["{{baseUrl}}"], "path": ["companies", "{{companyId}}"] }
+          }
+        },
+        {
+          "name": "Add Member (owner only)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"evaluator@acme.dev\",\n  \"permissionLevel\": \"EVALUATOR\"\n}" },
+            "url": { "raw": "{{baseUrl}}/companies/{{companyId}}/members", "host": ["{{baseUrl}}"], "path": ["companies", "{{companyId}}", "members"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Problems",
+      "item": [
+        {
+          "name": "Create Problem",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"MCQ\",\n  \"title\": \"What is a closure?\",\n  \"statement\": \"Pick the best definition of a closure in JavaScript.\",\n  \"difficulty\": \"MEDIUM\",\n  \"tags\": [\"javascript\"],\n  \"points\": 10,\n  \"options\": [\"A function bundled with its lexical scope\", \"A sealed object\", \"A loop construct\"],\n  \"correctAnswer\": \"A function bundled with its lexical scope\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/problems", "host": ["{{baseUrl}}"], "path": ["problems"] }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "if (pm.response.code === 201) {",
+              "  pm.collectionVariables.set('problemId', pm.response.json().data.id);",
+              "}"
+            ]}
+          }]
+        },
+        {
+          "name": "List Problems (pagination + filter)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/problems?page=1&limit=10&type=MCQ&difficulty=EASY",
+              "host": ["{{baseUrl}}"], "path": ["problems"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "type", "value": "MCQ" },
+                { "key": "difficulty", "value": "EASY" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search Problems",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/problems/search?q=REST",
+              "host": ["{{baseUrl}}"], "path": ["problems", "search"],
+              "query": [{ "key": "q", "value": "REST" }]
+            }
+          }
+        },
+        {
+          "name": "Get Problem",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/problems/{{problemId}}", "host": ["{{baseUrl}}"], "path": ["problems", "{{problemId}}"] }
+          }
+        },
+        {
+          "name": "Update Problem",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"points\": 15\n}" },
+            "url": { "raw": "{{baseUrl}}/problems/{{problemId}}", "host": ["{{baseUrl}}"], "path": ["problems", "{{problemId}}"] }
+          }
+        },
+        {
+          "name": "Delete Problem (soft delete)",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/problems/{{problemId}}", "host": ["{{baseUrl}}"], "path": ["problems", "{{problemId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Assessments",
+      "item": [
+        {
+          "name": "Create Assessment",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Backend Engineer Screen\",\n  \"description\": \"30-minute screening assessment\",\n  \"durationMinutes\": 30,\n  \"passingScore\": 60\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/assessments", "host": ["{{baseUrl}}"], "path": ["assessments"] }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "if (pm.response.code === 201) {",
+              "  pm.collectionVariables.set('assessmentId', pm.response.json().data.id);",
+              "}"
+            ]}
+          }]
+        },
+        {
+          "name": "List Assessments (pagination + filter)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/assessments?page=1&limit=10&status=DRAFT",
+              "host": ["{{baseUrl}}"], "path": ["assessments"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "status", "value": "DRAFT" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Assessment",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/assessments/{{assessmentId}}", "host": ["{{baseUrl}}"], "path": ["assessments", "{{assessmentId}}"] }
+          }
+        },
+        {
+          "name": "Update Assessment",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"passingScore\": 70\n}" },
+            "url": { "raw": "{{baseUrl}}/assessments/{{assessmentId}}", "host": ["{{baseUrl}}"], "path": ["assessments", "{{assessmentId}}"] }
+          }
+        },
+        {
+          "name": "Add Problem to Assessment",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"problemId\": \"{{problemId}}\",\n  \"order\": 1,\n  \"points\": 10\n}" },
+            "url": { "raw": "{{baseUrl}}/assessments/{{assessmentId}}/problems", "host": ["{{baseUrl}}"], "path": ["assessments", "{{assessmentId}}", "problems"] }
+          }
+        },
+        {
+          "name": "Publish Assessment",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"PUBLISHED\"\n}" },
+            "url": { "raw": "{{baseUrl}}/assessments/{{assessmentId}}/status", "host": ["{{baseUrl}}"], "path": ["assessments", "{{assessmentId}}", "status"] }
+          }
+        },
+        {
+          "name": "Delete Assessment (soft delete)",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/assessments/{{assessmentId}}", "host": ["{{baseUrl}}"], "path": ["assessments", "{{assessmentId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Invitations",
+      "item": [
+        {
+          "name": "Invite Candidates",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"emails\": [\"candidate@example.dev\"]\n}" },
+            "url": { "raw": "{{baseUrl}}/assessments/{{assessmentId}}/invitations", "host": ["{{baseUrl}}"], "path": ["assessments", "{{assessmentId}}", "invitations"] }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "if (pm.response.code === 201) {",
+              "  const data = pm.response.json().data;",
+              "  if (data && data[0]) pm.collectionVariables.set('invitationToken', data[0].token);",
+              "}"
+            ]}
+          }]
+        },
+        {
+          "name": "List Invitations",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/assessments/{{assessmentId}}/invitations", "host": ["{{baseUrl}}"], "path": ["assessments", "{{assessmentId}}", "invitations"] }
+          }
+        },
+        {
+          "name": "Accept Invitation (login as Candidate first)",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/invitations/{{invitationToken}}/accept", "host": ["{{baseUrl}}"], "path": ["invitations", "{{invitationToken}}", "accept"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Attempts",
+      "item": [
+        {
+          "name": "Start Attempt (login as Candidate first)",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/assessments/{{assessmentId}}/attempts/start", "host": ["{{baseUrl}}"], "path": ["assessments", "{{assessmentId}}", "attempts", "start"] }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "if (pm.response.code === 201) {",
+              "  pm.collectionVariables.set('attemptId', pm.response.json().data.id);",
+              "}"
+            ]}
+          }]
+        },
+        {
+          "name": "Get Attempt",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/attempts/{{attemptId}}", "host": ["{{baseUrl}}"], "path": ["attempts", "{{attemptId}}"] }
+          }
+        },
+        {
+          "name": "Heartbeat",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"event\": \"tab_blur\"\n}" },
+            "url": { "raw": "{{baseUrl}}/attempts/{{attemptId}}/heartbeat", "host": ["{{baseUrl}}"], "path": ["attempts", "{{attemptId}}", "heartbeat"] }
+          }
+        },
+        {
+          "name": "Submit Attempt (final)",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/attempts/{{attemptId}}/submit", "host": ["{{baseUrl}}"], "path": ["attempts", "{{attemptId}}", "submit"] }
+          }
+        },
+        {
+          "name": "My Attempt History",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/attempts/my-history", "host": ["{{baseUrl}}"], "path": ["attempts", "my-history"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Submissions",
+      "item": [
+        {
+          "name": "Submit Answer (MCQ example — matches seed-problem-mcq)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"problemId\": \"{{problemId}}\",\n  \"answer\": \"Representational State Transfer\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/attempts/{{attemptId}}/submissions", "host": ["{{baseUrl}}"], "path": ["attempts", "{{attemptId}}", "submissions"] }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "if (pm.response.code === 201) {",
+              "  pm.collectionVariables.set('submissionId', pm.response.json().data.id);",
+              "}"
+            ]}
+          }]
+        },
+        {
+          "name": "Get Attempt Score",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/attempts/{{attemptId}}/score", "host": ["{{baseUrl}}"], "path": ["attempts", "{{attemptId}}", "score"] }
+          }
+        },
+        {
+          "name": "Evaluate Submission (login as Owner/Evaluator first)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"manualScore\": 8\n}" },
+            "url": { "raw": "{{baseUrl}}/submissions/{{submissionId}}/evaluate", "host": ["{{baseUrl}}"], "path": ["submissions", "{{submissionId}}", "evaluate"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        {
+          "name": "Initiate Payment (owner only)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"credits\": 10,\n  \"provider\": \"SSLCOMMERZ\"\n}" },
+            "url": { "raw": "{{baseUrl}}/payments/initiate", "host": ["{{baseUrl}}"], "path": ["payments", "initiate"] }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "if (pm.response.code === 201) {",
+              "  const data = pm.response.json().data;",
+              "  pm.collectionVariables.set('paymentId', data.payment.id);",
+              "  pm.collectionVariables.set('transactionId', data.transactionId);",
+              "}"
+            ]}
+          }]
+        },
+        {
+          "name": "Payment Webhook (no auth — simulates the provider)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"transactionId\": \"{{transactionId}}\",\n  \"status\": \"SUCCESS\"\n}" },
+            "url": { "raw": "{{baseUrl}}/payments/webhook", "host": ["{{baseUrl}}"], "path": ["payments", "webhook"] }
+          }
+        },
+        {
+          "name": "Get Payment",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/payments/{{paymentId}}", "host": ["{{baseUrl}}"], "path": ["payments", "{{paymentId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "List Users (login as Admin first)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/admin/users?page=1&limit=10",
+              "host": ["{{baseUrl}}"], "path": ["admin", "users"],
+              "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "10" }]
+            }
+          }
+        },
+        {
+          "name": "Change User Role (set userId variable manually)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"role\": \"COMPANY\"\n}" },
+            "url": { "raw": "{{baseUrl}}/admin/users/{{userId}}/role", "host": ["{{baseUrl}}"], "path": ["admin", "users", "{{userId}}", "role"] }
+          }
+        },
+        {
+          "name": "Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/admin/dashboard-stats", "host": ["{{baseUrl}}"], "path": ["admin", "dashboard-stats"] }
+          }
+        },
+        {
+          "name": "Audit Logs",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/admin/audit-logs?page=1&limit=10",
+              "host": ["{{baseUrl}}"], "path": ["admin", "audit-logs"],
+              "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "10" }]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

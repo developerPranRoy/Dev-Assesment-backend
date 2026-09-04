@@ -1,0 +1,89 @@
+import { Request, Response } from "express";
+import httpStatus from "http-status";
+import catchAsync from "../../shared/catchAsync";
+import sendResponse from "../../shared/sendResponse";
+import { AssessmentService } from "./assessment.service";
+
+const createAssessment = catchAsync(async (req: Request, res: Response) => {
+  const data = await AssessmentService.createAssessment(req.user!.id, req.body);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.CREATED,
+    message: "Assessment created successfully",
+    data,
+  });
+});
+
+const listAssessments = catchAsync(async (req: Request, res: Response) => {
+  const { assessments, meta } = await AssessmentService.listAssessments(
+    req.user!.id,
+    req.query as any
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "Assessments retrieved successfully",
+    data: assessments,
+    meta,
+  });
+});
+
+const getAssessment = catchAsync(async (req: Request, res: Response) => {
+  const data = await AssessmentService.getAssessment(req.params.id);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "Assessment retrieved successfully",
+    data,
+  });
+});
+
+const updateAssessment = catchAsync(async (req: Request, res: Response) => {
+  const data = await AssessmentService.updateAssessment(req.user!.id, req.params.id, req.body);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "Assessment updated successfully",
+    data,
+  });
+});
+
+const deleteAssessment = catchAsync(async (req: Request, res: Response) => {
+  await AssessmentService.deleteAssessment(req.user!.id, req.params.id);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "Assessment deleted successfully",
+    data: null,
+  });
+});
+
+const addProblem = catchAsync(async (req: Request, res: Response) => {
+  const data = await AssessmentService.addProblem(req.user!.id, req.params.id, req.body);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.CREATED,
+    message: "Problem attached successfully",
+    data,
+  });
+});
+
+const changeStatus = catchAsync(async (req: Request, res: Response) => {
+  const data = await AssessmentService.changeStatus(req.user!.id, req.params.id, req.body.status);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "Assessment status updated successfully",
+    data,
+  });
+});
+
+export const AssessmentController = {
+  createAssessment,
+  listAssessments,
+  getAssessment,
+  updateAssessment,
+  deleteAssessment,
+  addProblem,
+  changeStatus,
+};
