@@ -25,17 +25,22 @@ export default {
     authMax: Number(process.env.RATE_LIMIT_AUTH_MAX) || 10,
   },
 
-  // Not used yet — googleAuth is stubbed until real credentials are supplied.
   google: {
     clientId: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     callbackUrl: process.env.GOOGLE_CALLBACK_URL,
   },
 
-  // Self-hosted or public Judge0 instance for grading CODING submissions.
-  // Coding submissions stay ungraded (PENDING) until this is set.
+ 
   judge0: {
     apiUrl: process.env.JUDGE0_API_URL,
+  },
+
+  stripe: {
+    secretKey: process.env.STRIPE_SECRET_KEY as string,
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET as string,
+    successUrl: process.env.STRIPE_SUCCESS_URL || "https://example.com/payment/success",
+    cancelUrl: process.env.STRIPE_CANCEL_URL || "https://example.com/payment/cancel",
   },
 
   cors: {

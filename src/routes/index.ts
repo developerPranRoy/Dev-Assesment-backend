@@ -16,9 +16,6 @@ const moduleRoutes = [
   { path: "/companies", route: CompanyRoutes },
   { path: "/problems", route: ProblemRoutes },
   { path: "/assessments", route: AssessmentRoutes },
-  // Invitation, Attempt, and Submission define their own full paths
-  // (spanning /assessments, /attempts, /invitations, /submissions),
-  // so they mount at root rather than under a single prefix.
   { path: "/", route: InvitationRoutes },
   { path: "/", route: AttemptRoutes },
   { path: "/", route: SubmissionRoutes },

@@ -11,7 +11,14 @@ const app: Application = express();
 
 app.use(helmet());
 app.use(cors({ origin: config.cors.origin }));
-app.use(express.json());
+
+app.use((req, res, next) => {
+  if (req.originalUrl === "/api/v1/payments/webhook") {
+    return next();
+  }
+  express.json()(req, res, next);
+});
+
 app.use(express.urlencoded({ extended: true }));
 app.use(apiLimiter);
 

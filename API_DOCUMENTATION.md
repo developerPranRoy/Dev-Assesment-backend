@@ -306,23 +306,27 @@ Recomputes the parent attempt's total score in the same transaction, and flips t
 
 ## Payments
 
-Credit-based model: companies buy credits, priced flat at 50 BDT/credit.
+Credit-based model via Stripe Checkout, priced flat at $0.50/credit (USD).
 
 ### Initiate Payment
 `POST /payments/initiate` — auth `COMPANY`, must be `OWNER`
 
 ```json
-{ "credits": 10, "provider": "SSLCOMMERZ" }
+{ "credits": 10 }
 ```
-`provider` is `SSLCOMMERZ`, `BKASH`, or `STRIPE`. **201** → `{ payment, transactionId }`. In production this would also return the provider's redirect/session URL — that's the next step once real merchant credentials are available.
+
+**201** → `{ payment, checkoutUrl }`. `checkoutUrl` is a real Stripe-hosted payment page — open it in a browser to pay. A `Payment` row is created with `status: PENDING` before the checkout URL is returned.
 
 ### Payment Webhook
-`POST /payments/webhook` — no auth (called by the payment provider directly)
+`POST /payments/webhook` — no auth, but requires a valid `Stripe-Signature` header
 
-```json
-{ "transactionId": "<id>", "status": "SUCCESS" }
-```
-Idempotent — a duplicate webhook for an already-processed transaction is a no-op. On `SUCCESS`, credits are granted to the company and an audit log entry is written, all in one transaction.
+Called by Stripe directly, not something you hand-craft in Postman — the body must be the exact raw bytes Stripe signed. Test it with the Stripe CLI: `stripe listen --forward-to localhost:5000/api/v1/payments/webhook`.
+
+Handles two event types:
+- `checkout.session.completed` → marks the payment `COMPLETED`, grants credits to the company, and writes an audit log entry, all in one transaction.
+- `checkout.session.expired` → marks the payment `FAILED`.
+
+Idempotent — a retried delivery for an already-processed session is a no-op. **400** if the signature doesn't verify.
 
 ### Get Payment
 `GET /payments/:id` — auth `COMPANY`

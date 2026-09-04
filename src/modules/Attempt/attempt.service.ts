@@ -8,7 +8,6 @@ import { AuthRepository } from "../Auth/auth.repository";
 
 type AttemptWithAssessment = NonNullable<Awaited<ReturnType<typeof AttemptRepository.findById>>>;
 
-/** Recomputes status against the clock — never trust a stale IN_PROGRESS row. */
 const resolveExpiry = async (attempt: AttemptWithAssessment) => {
   if (attempt.status !== "IN_PROGRESS" || !attempt.startedAt) {
     return attempt;
@@ -48,9 +47,7 @@ const startAttempt = async (candidateId: string, assessmentId: string) => {
     await InvitationRepository.markAccepted(invitation.id);
   }
 
-  // The @@unique([assessmentId, candidateId]) constraint on Attempt is the
-  // real guard against a double-start race — the check above is just a
-  // friendlier error message for the common case.
+
   return AttemptRepository.create({ assessmentId, candidateId, startedAt: new Date() });
 };
 
@@ -78,8 +75,7 @@ const submitAttempt = async (id: string) => {
     throw new ApiError(httpStatus.BAD_REQUEST, "This attempt can no longer be submitted");
   }
 
-  // Transaction avoids a race with a concurrent evaluation write finalizing
-  // the score at the same moment this submission closes out.
+ 
   return prisma.$transaction(async (tx) => {
     const submissions = await tx.submission.findMany({ where: { attemptId: id } });
     const allEvaluated = submissions.every((s) => s.status === "EVALUATED");

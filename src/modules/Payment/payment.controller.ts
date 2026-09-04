@@ -9,13 +9,14 @@ const initiatePayment = catchAsync(async (req: Request, res: Response) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.CREATED,
-    message: "Payment initiated successfully",
+    message: "Payment session created successfully",
     data,
   });
 });
 
 const webhook = catchAsync(async (req: Request, res: Response) => {
-  const data = await PaymentService.handleWebhook(req.body);
+  const signature = req.headers["stripe-signature"] as string;
+  const data = await PaymentService.handleStripeWebhook(req.body, signature);
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,

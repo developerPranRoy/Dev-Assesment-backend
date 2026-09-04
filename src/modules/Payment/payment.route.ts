@@ -1,4 +1,4 @@
-import { Router } from "express";
+import express, { Router } from "express";
 import { PaymentController } from "./payment.controller";
 import { PaymentValidation } from "./payment.validation";
 import validateRequest from "../../middlewares/validateRequest";
@@ -13,12 +13,11 @@ router.post(
   PaymentController.initiatePayment
 );
 
-// Providers call this directly — no user JWT is present on a webhook request.
-router.post(
-  "/webhook",
-  validateRequest(PaymentValidation.webhookZodSchema),
-  PaymentController.webhook
-);
+// Stripe verifies its signature against the exact raw bytes, so this route
+// gets its own raw-body parser instead of the global JSON one — see the
+// matching exclusion in app.ts. No Zod validation here: the body isn't
+// parsed JSON at this point, and signature verification is the real check.
+router.post("/webhook", express.raw({ type: "application/json" }), PaymentController.webhook);
 
 router.get("/:id", auth("COMPANY"), PaymentController.getPayment);
 

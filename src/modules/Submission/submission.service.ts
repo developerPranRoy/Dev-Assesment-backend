@@ -36,8 +36,7 @@ const submitAnswer = async (
     answer: payload.answer,
   });
 
-  // Auto-grade what can be graded automatically; written answers stay
-  // PENDING for an evaluator.
+
   if (problem.type === "MCQ") {
     const isCorrect = String(payload.answer) === problem.correctAnswer;
     return SubmissionRepository.update(submission.id, {

@@ -11,7 +11,6 @@ const createCompany = async (ownerId: string, payload: { name: string }) => {
 
   const company = await CompanyRepository.create({ name: payload.name, ownerId });
 
-  // Owner is automatically an OWNER-level member of their own company.
   await CompanyRepository.addMember({
     companyId: company.id,
     userId: ownerId,
@@ -56,11 +55,6 @@ const addMember = async (
   });
 };
 
-/**
- * Shared by Problems, Assessments, and Invitations: resolves which company
- * a COMPANY-role user acts for and confirms they can manage it (not just
- * evaluate). Kept here, not duplicated per module.
- */
 const resolveManagerContext = async (userId: string) => {
   const membership = await CompanyRepository.findMembershipByUserId(userId);
   if (!membership) {

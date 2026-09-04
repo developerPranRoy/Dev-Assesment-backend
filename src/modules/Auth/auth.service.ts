@@ -25,8 +25,6 @@ const registerUser = async (payload: {
     config.bcrypt.saltRounds
   );
 
-  // Registration only creates the identity. A COMPANY-role user creates
-  // their actual Company record separately via POST /companies.
   const user = await AuthRepository.create({
     name: payload.name,
     email: payload.email,
@@ -96,8 +94,6 @@ const refreshToken = async (token: string) => {
   return { accessToken };
 };
 
-// Scaffolded per your call: verifies the Google ID token and finds-or-creates
-// the user once GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET are set in .env.
 const googleAuth = async (_idToken: string) => {
   throw new ApiError(
     httpStatus.NOT_IMPLEMENTED,

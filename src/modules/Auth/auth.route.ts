@@ -27,7 +27,6 @@ router.post(
   AuthController.refreshToken
 );
 
-// Validation intentionally omitted until the real Google flow is wired up.
 router.post("/google", authLimiter, AuthController.googleAuth);
 
 router.post("/logout", AuthController.logout);

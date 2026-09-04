@@ -45,7 +45,6 @@ const googleAuth = catchAsync(async (req: Request, res: Response) => {
 });
 
 const logout = catchAsync(async (req: Request, res: Response) => {
-  // Stateless JWT — logout is handled client-side by discarding both tokens.
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
