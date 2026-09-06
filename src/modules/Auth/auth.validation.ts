@@ -4,10 +4,8 @@ const registerZodSchema = z.object({
   body: z.object({
     name: z.string({ required_error: "Name is required" }).min(2),
     email: z.string({ required_error: "Email is required" }).email(),
-    password: z.string({ required_error: "Password is required" }).min(6),
-    role: z.enum(["CANDIDATE", "COMPANY"], {
-      required_error: "Role is required",
-    }),
+    password: z.string({ required_error: "Password is required" }).min(8),
+    role: z.enum(["CANDIDATE", "COMPANY"], { required_error: "Role is required" }),
   }),
 });
 
@@ -19,8 +17,12 @@ const loginZodSchema = z.object({
 });
 
 const refreshTokenZodSchema = z.object({
+  body: z.object({ refreshToken: z.string().optional() }).optional().default({}),
+});
+
+const googleExchangeZodSchema = z.object({
   body: z.object({
-    refreshToken: z.string({ required_error: "Refresh token is required" }),
+    code: z.string({ required_error: "Exchange code is required" }).min(10),
   }),
 });
 
@@ -35,5 +37,6 @@ export const AuthValidation = {
   registerZodSchema,
   loginZodSchema,
   refreshTokenZodSchema,
+  googleExchangeZodSchema,
   updateMeZodSchema,
 };
