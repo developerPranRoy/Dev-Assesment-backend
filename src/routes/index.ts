@@ -1,4 +1,5 @@
 import { Router } from "express";
+import config from "../config";
 import { AuthRoutes } from "../modules/Auth/auth.route";
 import { CompanyRoutes } from "../modules/Company/company.route";
 import { ProblemRoutes } from "../modules/Problem/problem.route";
@@ -10,19 +11,27 @@ import { PaymentRoutes } from "../modules/Payment/payment.route";
 import { AdminRoutes } from "../modules/Admin/admin.route";
 
 const router = Router();
+const service = config.serviceName;
 
-const moduleRoutes = [
-  { path: "/auth", route: AuthRoutes },
-  { path: "/companies", route: CompanyRoutes },
-  { path: "/problems", route: ProblemRoutes },
-  { path: "/assessments", route: AssessmentRoutes },
-  { path: "/", route: InvitationRoutes },
-  { path: "/", route: AttemptRoutes },
-  { path: "/", route: SubmissionRoutes },
-  { path: "/payments", route: PaymentRoutes },
-  { path: "/admin", route: AdminRoutes },
-];
+if (service === "all" || service === "auth") {
+  router.use("/auth", AuthRoutes);
+}
 
-moduleRoutes.forEach(({ path, route }) => router.use(path, route));
+if (service === "all" || service === "core") {
+  router.use("/companies", CompanyRoutes);
+  router.use("/problems", ProblemRoutes);
+  router.use("/assessments", AssessmentRoutes);
+  router.use("/", InvitationRoutes);
+  router.use("/admin", AdminRoutes);
+}
+
+if (service === "all" || service === "exam") {
+  router.use("/", AttemptRoutes);
+  router.use("/", SubmissionRoutes);
+}
+
+if (service === "all" || service === "payment") {
+  router.use("/payments", PaymentRoutes);
+}
 
 export default router;
