@@ -14,7 +14,4 @@ const evaluateZodSchema = z.object({
   }),
 });
 
-export const SubmissionValidation = {
-  submitAnswerZodSchema,
-  evaluateZodSchema,
-};
+export const SubmissionValidation = { submitAnswerZodSchema, evaluateZodSchema };

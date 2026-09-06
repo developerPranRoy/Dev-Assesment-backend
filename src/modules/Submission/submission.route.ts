@@ -6,20 +6,8 @@ import auth from "../../middlewares/auth";
 
 const router = Router();
 
-router.post(
-  "/attempts/:attemptId/submissions",
-  auth("CANDIDATE"),
-  validateRequest(SubmissionValidation.submitAnswerZodSchema),
-  SubmissionController.submitAnswer
-);
-
+router.post("/attempts/:attemptId/submissions", auth("CANDIDATE"), validateRequest(SubmissionValidation.submitAnswerZodSchema), SubmissionController.submitAnswer);
 router.get("/attempts/:attemptId/score", auth(), SubmissionController.getScore);
-
-router.patch(
-  "/submissions/:id/evaluate",
-  auth("COMPANY"),
-  validateRequest(SubmissionValidation.evaluateZodSchema),
-  SubmissionController.evaluateSubmission
-);
+router.patch("/submissions/:id/evaluate", auth("COMPANY"), validateRequest(SubmissionValidation.evaluateZodSchema), SubmissionController.evaluateSubmission);
 
 export const SubmissionRoutes = router;

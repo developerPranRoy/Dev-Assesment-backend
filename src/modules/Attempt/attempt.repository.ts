@@ -14,21 +14,10 @@ const findById = (id: string) =>
 
 const update = (
   id: string,
-  data: {
-    status?: AttemptStatus;
-    submittedAt?: Date;
-    score?: number;
-    flaggedEvents?: unknown;
-  }
-) => prisma.attempt.update({ where: { id }, data: data as any });
+  data: { status?: AttemptStatus; submittedAt?: Date; score?: number; flaggedEvents?: unknown }
+) => prisma.attempt.update({ where: { id }, data: data as never });
 
 const findMyHistory = (candidateId: string) =>
   prisma.attempt.findMany({ where: { candidateId }, orderBy: { createdAt: "desc" } });
 
-export const AttemptRepository = {
-  findActive,
-  create,
-  findById,
-  update,
-  findMyHistory,
-};
+export const AttemptRepository = { findActive, create, findById, update, findMyHistory };

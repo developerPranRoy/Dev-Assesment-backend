@@ -6,6 +6,4 @@ const heartbeatZodSchema = z.object({
   }),
 });
 
-export const AttemptValidation = {
-  heartbeatZodSchema,
-};
+export const AttemptValidation = { heartbeatZodSchema };

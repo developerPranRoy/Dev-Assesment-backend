@@ -1,7 +1,12 @@
 import prisma from "../../shared/prisma";
 
-const create = (data: { attemptId: string; problemId: string; answer: unknown }) =>
-  prisma.submission.create({ data: data as any });
+const create = (data: {
+  attemptId: string;
+  problemId: string;
+  answer: unknown;
+  status?: "PENDING" | "EVALUATED";
+  autoScore?: number;
+}) => prisma.submission.create({ data: data as never });
 
 const findByAttemptAndProblem = (attemptId: string, problemId: string) =>
   prisma.submission.findUnique({
@@ -9,10 +14,7 @@ const findByAttemptAndProblem = (attemptId: string, problemId: string) =>
   });
 
 const findById = (id: string) =>
-  prisma.submission.findUnique({
-    where: { id },
-    include: { problem: true, attempt: true },
-  });
+  prisma.submission.findUnique({ where: { id }, include: { problem: true, attempt: true } });
 
 const update = (
   id: string,
@@ -23,11 +25,6 @@ const update = (
     evaluatedById?: string;
     evaluatedAt?: Date;
   }
-) => prisma.submission.update({ where: { id }, data: data as any });
+) => prisma.submission.update({ where: { id }, data: data as never });
 
-export const SubmissionRepository = {
-  create,
-  findByAttemptAndProblem,
-  findById,
-  update,
-};
+export const SubmissionRepository = { create, findByAttemptAndProblem, findById, update };
