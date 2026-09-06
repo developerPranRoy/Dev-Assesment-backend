@@ -17,18 +17,11 @@ const findMany = (params: {
     deletedAt: null,
     ...(params.type && { type: params.type }),
     ...(params.difficulty && { difficulty: params.difficulty }),
-    ...(params.search && {
-      title: { contains: params.search, mode: "insensitive" },
-    }),
+    ...(params.search && { title: { contains: params.search, mode: "insensitive" } }),
   };
 
   return Promise.all([
-    prisma.problem.findMany({
-      where,
-      skip: params.skip,
-      take: params.take,
-      orderBy: { createdAt: "desc" },
-    }),
+    prisma.problem.findMany({ where, skip: params.skip, take: params.take, orderBy: { createdAt: "desc" } }),
     prisma.problem.count({ where }),
   ]);
 };
@@ -42,10 +35,4 @@ const update = (id: string, data: Prisma.ProblemUpdateInput) =>
 const softDelete = (id: string) =>
   prisma.problem.update({ where: { id }, data: { deletedAt: new Date() } });
 
-export const ProblemRepository = {
-  create,
-  findMany,
-  findById,
-  update,
-  softDelete,
-};
+export const ProblemRepository = { create, findMany, findById, update, softDelete };

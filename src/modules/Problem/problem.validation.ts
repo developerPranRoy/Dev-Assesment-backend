@@ -27,7 +27,4 @@ const updateProblemZodSchema = z.object({
   }),
 });
 
-export const ProblemValidation = {
-  createProblemZodSchema,
-  updateProblemZodSchema,
-};
+export const ProblemValidation = { createProblemZodSchema, updateProblemZodSchema };

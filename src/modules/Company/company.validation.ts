@@ -9,13 +9,8 @@ const createCompanyZodSchema = z.object({
 const addMemberZodSchema = z.object({
   body: z.object({
     email: z.string({ required_error: "Email is required" }).email(),
-    permissionLevel: z.enum(["CREATOR", "EVALUATOR"], {
-      required_error: "Permission level is required",
-    }),
+    permissionLevel: z.enum(["CREATOR", "EVALUATOR"], { required_error: "Permission level is required" }),
   }),
 });
 
-export const CompanyValidation = {
-  createCompanyZodSchema,
-  addMemberZodSchema,
-};
+export const CompanyValidation = { createCompanyZodSchema, addMemberZodSchema };

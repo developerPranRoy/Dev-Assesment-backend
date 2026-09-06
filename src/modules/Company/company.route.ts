@@ -6,20 +6,8 @@ import auth from "../../middlewares/auth";
 
 const router = Router();
 
-router.post(
-  "/",
-  auth("COMPANY"),
-  validateRequest(CompanyValidation.createCompanyZodSchema),
-  CompanyController.createCompany
-);
-
-router.get("/:id", CompanyController.getCompany);
-
-router.post(
-  "/:id/members",
-  auth("COMPANY"),
-  validateRequest(CompanyValidation.addMemberZodSchema),
-  CompanyController.addMember
-);
+router.post("/", auth("COMPANY"), validateRequest(CompanyValidation.createCompanyZodSchema), CompanyController.createCompany);
+router.get("/:id", auth(), CompanyController.getCompany);
+router.post("/:id/members", auth("COMPANY"), validateRequest(CompanyValidation.addMemberZodSchema), CompanyController.addMember);
 
 export const CompanyRoutes = router;

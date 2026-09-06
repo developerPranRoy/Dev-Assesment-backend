@@ -21,11 +21,8 @@ const findMember = (companyId: string, userId: string) =>
     where: { companyId_userId: { companyId, userId } },
   });
 
-const addMember = (data: {
-  companyId: string;
-  userId: string;
-  permissionLevel: PermissionLevel;
-}) => prisma.companyMember.create({ data });
+const addMember = (data: { companyId: string; userId: string; permissionLevel: PermissionLevel }) =>
+  prisma.companyMember.create({ data });
 
 export const CompanyRepository = {
   create,

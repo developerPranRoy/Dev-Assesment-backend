@@ -20,13 +20,12 @@ const createProblem = async (
   }
 ) => {
   const companyId = await CompanyService.resolveManagerContext(userId);
-
   return ProblemRepository.create({
     ...payload,
     tags: payload.tags ?? [],
     points: payload.points ?? 0,
-    testCases: payload.testCases as any,
-    options: payload.options as any,
+    testCases: payload.testCases as never,
+    options: payload.options as never,
     companyId,
     createdById: userId,
   });
@@ -34,17 +33,10 @@ const createProblem = async (
 
 const listProblems = async (
   userId: string,
-  query: {
-    page?: string;
-    limit?: string;
-    type?: ProblemType;
-    difficulty?: Difficulty;
-    search?: string;
-  }
+  query: { page?: string; limit?: string; type?: ProblemType; difficulty?: Difficulty; search?: string }
 ) => {
   const companyId = await CompanyService.resolveManagerContext(userId);
   const { page, limit, skip } = getPagination(query);
-
   const [problems, total] = await ProblemRepository.findMany({
     companyId,
     type: query.type,
@@ -53,45 +45,25 @@ const listProblems = async (
     skip,
     take: limit,
   });
-
   return { problems, meta: buildMeta(page, limit, total) };
 };
 
-const getProblem = async (id: string) => {
+const getProblem = async (userId: string, id: string) => {
   const problem = await ProblemRepository.findById(id);
-  if (!problem) {
-    throw new ApiError(httpStatus.NOT_FOUND, "Problem not found");
-  }
-  return problem;
-};
-
-const assertOwnership = async (userId: string, id: string) => {
-  const problem = await getProblem(id);
+  if (!problem) throw new ApiError(httpStatus.NOT_FOUND, "Problem not found");
   const companyId = await CompanyService.resolveManagerContext(userId);
-  if (companyId !== problem.companyId) {
-    throw new ApiError(httpStatus.FORBIDDEN, "You cannot modify another company's problem");
-  }
+  if (companyId !== problem.companyId) throw new ApiError(httpStatus.FORBIDDEN, "You cannot view another company's problem");
   return problem;
 };
 
-const updateProblem = async (
-  userId: string,
-  id: string,
-  payload: Record<string, unknown>
-) => {
-  await assertOwnership(userId, id);
-  return ProblemRepository.update(id, payload as any);
+const updateProblem = async (userId: string, id: string, payload: Record<string, unknown>) => {
+  await getProblem(userId, id);
+  return ProblemRepository.update(id, payload as never);
 };
 
 const deleteProblem = async (userId: string, id: string) => {
-  await assertOwnership(userId, id);
+  await getProblem(userId, id);
   return ProblemRepository.softDelete(id);
 };
 
-export const ProblemService = {
-  createProblem,
-  listProblems,
-  getProblem,
-  updateProblem,
-  deleteProblem,
-};
+export const ProblemService = { createProblem, listProblems, getProblem, updateProblem, deleteProblem };
