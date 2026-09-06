@@ -1,0 +1,7 @@
+node_modules
+dist
+.git
+.env
+*.md
+postman_collection.json
+API_DOCUMENTATION.md

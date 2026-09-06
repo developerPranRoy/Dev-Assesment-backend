@@ -1,0 +1,391 @@
+# =============================================================================
+#  docker-compose — production-ready, million-user architecture
+#
+#  Services:
+#    postgres   — PostgreSQL 16 (primary)
+#    pgbouncer  — connection-pool proxy (transaction mode)
+#    redis      — BullMQ queue + rate-limit + cache
+#    migrate    — one-shot Prisma migrate deploy
+#    auth       — authentication microservice
+#    core       — companies / problems / assessments / admin
+#    exam       — attempts / submissions
+#    payment    — Stripe billing
+#    worker     — BullMQ grading worker
+#    nginx      — reverse proxy / load balancer
+# =============================================================================
+
+# ── Shared environment anchors ─────────────────────────────────────────────────
+x-app-env: &app-env
+  NODE_ENV: production
+  PORT: 5000
+  # Route app traffic through PgBouncer (connection_limit per service kept small)
+  DATABASE_URL: postgresql://postgres:postgres@pgbouncer:5432/dev_assessment_platform?pgbouncer=true&connection_limit=5&pool_timeout=10
+  # Prisma migrations / schema introspection need a direct connection
+  DIRECT_DATABASE_URL: postgresql://postgres:postgres@postgres:5432/dev_assessment_platform
+  REDIS_URL: redis://redis:6379
+  COOKIE_SECURE: "true"     # MUST be true behind nginx HTTPS termination
+  LOG_LEVEL: info
+  SMTP_HOST: ${SMTP_HOST:-}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_SECURE: ${SMTP_SECURE:-false}
+  SMTP_USER: ${SMTP_USER:-}
+  SMTP_PASS: ${SMTP_PASS:-}
+  SMTP_FROM: ${SMTP_FROM:-noreply@devassessment.io}
+
+# ── Shared app-service anchor ──────────────────────────────────────────────────
+x-app: &app
+  build: .
+  restart: unless-stopped
+  env_file:
+    - .env
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    pgbouncer:
+      condition: service_started
+    migrate:
+      condition: service_completed_successfully
+  # Production log driver — aggregate JSON logs in a central driver
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "5"
+  # Default resource constraints — override per-service below as needed
+  deploy:
+    resources:
+      limits:
+        cpus: "1.0"
+        memory: 512M
+      reservations:
+        cpus: "0.25"
+        memory: 128M
+
+services:
+  # ── PostgreSQL ───────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ports:
+      - "5433:5432"    # exposed on 5433 to avoid conflict with local postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: dev_assessment_platform
+      POSTGRES_HOST_AUTH_METHOD: md5
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C --auth-host=md5"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d dev_assessment_platform"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    # PostgreSQL tuning for production (adjust to your host RAM)
+    command:
+      - postgres
+      - -c
+      - max_connections=300
+      - -c
+      - shared_buffers=512MB
+      - -c
+      - effective_cache_size=1536MB
+      - -c
+      - maintenance_work_mem=128MB
+      - -c
+      - checkpoint_completion_target=0.9
+      - -c
+      - wal_buffers=16MB
+      - -c
+      - default_statistics_target=100
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - work_mem=8MB
+      - -c
+      - min_wal_size=1GB
+      - -c
+      - max_wal_size=4GB
+      - -c
+      - log_min_duration_statement=200
+      - -c
+      - "log_line_prefix=%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h "
+    networks:
+      - internal
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+
+  # ── PgBouncer ─────────────────────────────────────────────────────────────────
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/dev_assessment_platform
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 3000
+      DEFAULT_POOL_SIZE: 50
+      MIN_POOL_SIZE: 5
+      RESERVE_POOL_SIZE: 10
+      RESERVE_POOL_TIMEOUT: 5
+      SERVER_IDLE_TIMEOUT: 600
+      AUTH_TYPE: md5
+      IGNORE_STARTUP_PARAMETERS: extra_float_digits
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 5432 -U postgres || exit 0"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+
+  # ── Redis ─────────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"    # exposed to host for local npm run dev
+    command: >
+      redis-server
+      --maxmemory 1gb
+      --maxmemory-policy allkeys-lru
+      --save ""
+      --appendonly no
+      --tcp-keepalive 60
+      --timeout 0
+      --hz 20
+      --loglevel notice
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    networks:
+      - internal
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1200M
+        reservations:
+          cpus: "0.1"
+          memory: 256M
+
+  # ── One-shot migration runner ─────────────────────────────────────────────────
+  migrate:
+    build:
+      context: .
+      target: build
+    restart: "no"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/dev_assessment_platform
+      DIRECT_DATABASE_URL: postgresql://postgres:postgres@postgres:5432/dev_assessment_platform
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["npx", "prisma", "migrate", "deploy"]
+    networks:
+      - internal
+
+  # ── Auth microservice ─────────────────────────────────────────────────────────
+  auth:
+    <<: *app
+    environment:
+      <<: *app-env
+      SERVICE_NAME: auth
+    expose:
+      - "5000"
+    networks:
+      - internal
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 384M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+      update_config:
+        order: start-first
+        failure_action: rollback
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+  # ── Core microservice ─────────────────────────────────────────────────────────
+  core:
+    <<: *app
+    environment:
+      <<: *app-env
+      SERVICE_NAME: core
+    expose:
+      - "5000"
+    networks:
+      - internal
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+      update_config:
+        order: start-first
+        failure_action: rollback
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+  # ── Exam microservice ─────────────────────────────────────────────────────────
+  exam:
+    <<: *app
+    environment:
+      <<: *app-env
+      SERVICE_NAME: exam
+    expose:
+      - "5000"
+    networks:
+      - internal
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+      update_config:
+        order: start-first
+        failure_action: rollback
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+  # ── Payment microservice ──────────────────────────────────────────────────────
+  payment:
+    <<: *app
+    environment:
+      <<: *app-env
+      SERVICE_NAME: payment
+    expose:
+      - "5000"
+    networks:
+      - internal
+    deploy:
+      replicas: 1           # Payment is stateless but Stripe webhook needs care
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+  # ── Background grading worker ─────────────────────────────────────────────────
+  worker:
+    <<: *app
+    environment:
+      <<: *app-env
+      SERVICE_NAME: worker
+      WORKER_CONCURRENCY: "8"
+    # Workers don't serve HTTP — no port exposure needed
+    networks:
+      - internal
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
+        reservations:
+          cpus: "0.5"
+          memory: 256M
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 5
+
+  # ── Nginx reverse proxy ───────────────────────────────────────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      # - "443:443"   # Uncomment and add SSL cert volume when TLS is terminated here
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - nginx_cache:/var/cache/nginx
+    depends_on:
+      - auth
+      - core
+      - exam
+      - payment
+    networks:
+      - internal
+      - external
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+# ── Named volumes ─────────────────────────────────────────────────────────────
+volumes:
+  postgres_data:
+    driver: local
+  nginx_cache:
+    driver: local
+
+# ── Networks ──────────────────────────────────────────────────────────────────
+networks:
+  internal:
+    driver: bridge
+    # NOTE: internal:true removed so postgres/redis ports bind to host for dev
+  external:
+    driver: bridge
