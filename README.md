@@ -5,11 +5,12 @@ A backend platform for running technical assessments end to end: a company creat
 ## Tech Stack
 
 - **Runtime**: Node.js, TypeScript, Express.js
-- **Database**: PostgreSQL + Prisma
-- **Validation**: Zod
-- **Auth**: JWT (access + refresh), bcryptjs — Google OAuth scaffolded, not yet wired to real credentials
-- **Security**: Helmet, CORS, express-rate-limit
-- **Code execution**: Judge0 (optional — pluggable via `JUDGE0_API_URL`)
+- **Database**: PostgreSQL + Prisma, PgBouncer in Docker
+- **Cache / queue**: Redis (rate limits, token blacklist, OAuth state, hot memberships) + BullMQ grading worker
+- **Gateway**: Nginx (gzip, per-route rate limits, service routing)
+- **Auth**: JWT (access + refresh), bcryptjs, Google OAuth, Redis-backed logout blacklist
+- **Uploads**: Cloudinary (avatar + resume)
+- **Code execution**: Judge0 via async worker (`JUDGE0_API_URL`)
 - **Payments**: Stripe (Checkout Sessions + signature-verified webhooks), credit-based model
 
 ## Roles
@@ -35,19 +36,28 @@ A backend platform for running technical assessments end to end: a company creat
 
 ### Prerequisites
 - Node.js 18+
-- A PostgreSQL database (Neon, Supabase, or Render's managed Postgres all work)
+- PostgreSQL and Redis (or Docker)
 
 ### Installation
 ```bash
 npm install
 cp .env.example .env
-# fill in DATABASE_URL and both JWT secrets in .env
+# fill in DATABASE_URL, DIRECT_DATABASE_URL, Redis, and both JWT secrets
 npx prisma generate
 npx prisma migrate dev --name init
 npm run prisma:seed
 npm run dev
 ```
-Server runs on `http://localhost:5000` by default; health check at `GET /health`.
+
+Local Redis is required (`REDIS_URL`). For production-shaped services:
+
+```bash
+docker compose up --build
+```
+
+This starts Postgres, Redis, PgBouncer, migrate, **auth / core / exam / payment** APIs, a grading **worker**, and **Nginx on port 80**. Scale a service with `docker compose up --scale exam=3`.
+
+Server runs on `http://localhost:5000` in monolith mode (`SERVICE_NAME=all`); health check at `GET /health`, readiness at `GET /ready`.
 
 ### Testing Stripe webhooks locally
 
@@ -118,10 +128,9 @@ Repository: `[add your GitHub repo URL]`
 
 Documented here rather than discovered mid-review:
 
-- **Google OAuth** returns `501 Not Implemented` — the route and controller exist; real token verification needs live `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`.
-- **Logout** is a stateless no-op confirmation — JWT revocation would need a Redis-backed blacklist, which isn't wired in.
-- **Coding submissions** only auto-grade if `JUDGE0_API_URL` is configured; otherwise they're left `PENDING` for manual grading.
-- **Payments** are real Stripe Checkout Sessions at $0.50/credit (USD) — priced in USD rather than BDT since Stripe support for BDT settlement varies by account; switch the currency in `payment.service.ts` if your Stripe account is configured for it. `success_url`/`cancel_url` default to placeholder pages since there's no frontend yet — point them at a real page once one exists.
+- **Services share one PostgreSQL schema** — split behind Nginx by bounded context (auth, core, exam, payment, worker), not separate databases. That is the usual first production step; per-service databases come later if a team owns each domain.
+- **Coding submissions** auto-grade asynchronously when `JUDGE0_API_URL` is set; otherwise they stay `PENDING` for manual grading.
+- **Payments** are real Stripe Checkout Sessions at $0.50/credit (USD). `success_url`/`cancel_url` default to placeholder pages until a frontend exists.
 - **Invitations** return the token in the API response rather than emailing it — no Nodemailer/Resend integration yet.
 
 ## License

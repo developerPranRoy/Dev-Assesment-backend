@@ -310,21 +310,15 @@
           }
         },
         {
-          "name": "Google Login (stub \u2014 501 until configured)",
+          "name": "Google Login (open in a browser \u2014 NOT testable from Postman)",
           "request": {
             "auth": {
               "type": "noauth"
             },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "method": "GET",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"idToken\": \"placeholder\"\n}"
+              "raw": "Do not send this from Postman.\n\nThis is a real OAuth redirect flow \u2014 Postman can't complete Google's login form.\n\nTo test for real:\n1. Set GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_CALLBACK_URL in .env (see README)\n2. Open {{baseUrl}}/auth/google directly in a browser\n3. Log in with a Google account\n4. You'll land on /auth/google/callback with a JSON response containing accessToken/refreshToken, same shape as a normal login"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/google",
