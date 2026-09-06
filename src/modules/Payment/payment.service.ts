@@ -1,5 +1,6 @@
 import httpStatus from "http-status";
 import Stripe from "stripe";
+import { Role } from "@prisma/client";
 import ApiError from "../../shared/ApiError";
 import prisma from "../../shared/prisma";
 import config from "../../config";
@@ -7,9 +8,13 @@ import stripe from "../../lib/stripe";
 import { PaymentRepository } from "./payment.repository";
 import { CompanyRepository } from "../Company/company.repository";
 
-const PRICE_PER_CREDIT_CENTS = 50; // $0.50 per credit (USD)
+const PRICE_PER_CREDIT_CENTS = 50;
 
 const initiatePayment = async (userId: string, payload: { credits: number }) => {
+  if (!config.stripe.secretKey) {
+    throw new ApiError(httpStatus.NOT_IMPLEMENTED, "Stripe is not configured");
+  }
+
   const membership = await CompanyRepository.findMembershipByUserId(userId);
   if (!membership || membership.permissionLevel !== "OWNER") {
     throw new ApiError(httpStatus.FORBIDDEN, "Only the company owner can purchase credits");
@@ -44,11 +49,9 @@ const initiatePayment = async (userId: string, payload: { credits: number }) => 
   return { payment, checkoutUrl: session.url };
 };
 
-/**
- * rawBody must be the untouched request body (Buffer) — Stripe's signature
- * check fails against anything that's been JSON-parsed and re-serialized.
- */
 const handleStripeWebhook = async (rawBody: Buffer, signature: string) => {
+  if (!signature) throw new ApiError(httpStatus.BAD_REQUEST, "Missing Stripe signature");
+
   let event: Stripe.Event;
   try {
     event = stripe.webhooks.constructEvent(rawBody, signature, config.stripe.webhookSecret);
@@ -58,34 +61,25 @@ const handleStripeWebhook = async (rawBody: Buffer, signature: string) => {
 
   if (event.type === "checkout.session.expired") {
     const session = event.data.object as Stripe.Checkout.Session;
-    const payment = await PaymentRepository.findByTransactionId(session.id);
-    if (payment && payment.status === "PENDING") {
-      await PaymentRepository.markFailed(payment.id);
-    }
+    await prisma.payment.updateMany({
+      where: { transactionId: session.id, status: "PENDING" },
+      data: { status: "FAILED" },
+    });
     return { received: true };
   }
 
-  if (event.type !== "checkout.session.completed") {
-    return { received: true }; // acknowledge — nothing to do for other event types
-  }
+  if (event.type !== "checkout.session.completed") return { received: true };
 
   const session = event.data.object as Stripe.Checkout.Session;
   const payment = await PaymentRepository.findByTransactionId(session.id);
-  if (!payment) {
-    throw new ApiError(httpStatus.NOT_FOUND, "Unknown transaction");
-  }
-
-  // Idempotency: Stripe retries webhook delivery — a second event for an
-  // already-processed session must not double-grant credits.
-  if (payment.status !== "PENDING") {
-    return { received: true };
-  }
+  if (!payment || payment.status !== "PENDING") return { received: true };
 
   const updated = await prisma.$transaction(async (tx) => {
-    const result = await tx.payment.update({
-      where: { id: payment.id },
+    const claimed = await tx.payment.updateMany({
+      where: { id: payment.id, status: "PENDING" },
       data: { status: "COMPLETED" },
     });
+    if (claimed.count === 0) return null;
     await tx.company.update({
       where: { id: payment.companyId },
       data: { credits: { increment: payment.creditsGranted ?? 0 } },
@@ -98,22 +92,22 @@ const handleStripeWebhook = async (rawBody: Buffer, signature: string) => {
         metadata: { credits: payment.creditsGranted },
       },
     });
-    return result;
+    return tx.payment.findUnique({ where: { id: payment.id } });
   });
 
-  return updated;
+  return updated ?? { received: true };
 };
 
-const getPayment = async (id: string) => {
+const getPayment = async (userId: string, role: Role, id: string) => {
   const payment = await PaymentRepository.findById(id);
-  if (!payment) {
-    throw new ApiError(httpStatus.NOT_FOUND, "Payment not found");
+  if (!payment) throw new ApiError(httpStatus.NOT_FOUND, "Payment not found");
+
+  if (role !== "ADMIN") {
+    const membership = await CompanyRepository.findMember(payment.companyId, userId);
+    if (!membership) throw new ApiError(httpStatus.FORBIDDEN, "You cannot view this payment");
   }
+
   return payment;
 };
 
-export const PaymentService = {
-  initiatePayment,
-  handleStripeWebhook,
-  getPayment,
-};
+export const PaymentService = { initiatePayment, handleStripeWebhook, getPayment };

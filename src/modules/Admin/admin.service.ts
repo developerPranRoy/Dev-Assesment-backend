@@ -2,6 +2,7 @@ import { Role } from "@prisma/client";
 import { getPagination, buildMeta } from "../../shared/pagination";
 import { logAudit } from "../../shared/auditLog";
 import { AdminRepository } from "./admin.repository";
+import { cacheDel, cacheGetOrSet, CacheKeys, CACHE_TTL } from "../../lib/cache";
 
 const listUsers = async (query: { page?: string; limit?: string; role?: Role }) => {
   const { page, limit, skip } = getPagination(query);
@@ -11,17 +12,13 @@ const listUsers = async (query: { page?: string; limit?: string; role?: Role }) 
 
 const changeUserRole = async (adminId: string, userId: string, role: Role) => {
   const user = await AdminRepository.updateRole(userId, role);
-  await logAudit({
-    actorId: adminId,
-    action: "user.role_changed",
-    entityType: "User",
-    entityId: userId,
-    metadata: { role },
-  });
+  await cacheDel(CacheKeys.adminStats, CacheKeys.membership(userId));
+  logAudit({ actorId: adminId, action: "user.role_changed", entityType: "User", entityId: userId, metadata: { role } });
   return user;
 };
 
-const dashboardStats = () => AdminRepository.dashboardStats();
+const dashboardStats = () =>
+  cacheGetOrSet(CacheKeys.adminStats, CACHE_TTL.adminStats, () => AdminRepository.dashboardStats());
 
 const listAuditLogs = async (query: { page?: string; limit?: string }) => {
   const { page, limit, skip } = getPagination(query);
@@ -29,9 +26,4 @@ const listAuditLogs = async (query: { page?: string; limit?: string }) => {
   return { logs, meta: buildMeta(page, limit, total) };
 };
 
-export const AdminService = {
-  listUsers,
-  changeUserRole,
-  dashboardStats,
-  listAuditLogs,
-};
+export const AdminService = { listUsers, changeUserRole, dashboardStats, listAuditLogs };

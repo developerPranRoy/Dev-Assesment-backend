@@ -19,30 +19,20 @@ const updateRole = (id: string, role: Role) =>
   prisma.user.update({ where: { id }, data: { role } });
 
 const dashboardStats = async () => {
-  const [totalUsers, totalCompanies, totalAssessments, totalAttempts, completedPayments] =
-    await Promise.all([
-      prisma.user.count({ where: { deletedAt: null } }),
-      prisma.company.count({ where: { deletedAt: null } }),
-      prisma.assessment.count({ where: { deletedAt: null } }),
-      prisma.attempt.count(),
-      prisma.payment.count({ where: { status: "COMPLETED" } }),
-    ]);
+  const [totalUsers, totalCompanies, totalAssessments, totalAttempts, completedPayments] = await Promise.all([
+    prisma.user.count({ where: { deletedAt: null } }),
+    prisma.company.count({ where: { deletedAt: null } }),
+    prisma.assessment.count({ where: { deletedAt: null } }),
+    prisma.attempt.count(),
+    prisma.payment.count({ where: { status: "COMPLETED" } }),
+  ]);
   return { totalUsers, totalCompanies, totalAssessments, totalAttempts, completedPayments };
 };
 
 const findAuditLogs = (params: { skip: number; take: number }) =>
   Promise.all([
-    prisma.auditLog.findMany({
-      skip: params.skip,
-      take: params.take,
-      orderBy: { createdAt: "desc" },
-    }),
+    prisma.auditLog.findMany({ skip: params.skip, take: params.take, orderBy: { createdAt: "desc" } }),
     prisma.auditLog.count(),
   ]);
 
-export const AdminRepository = {
-  findUsers,
-  updateRole,
-  dashboardStats,
-  findAuditLogs,
-};
+export const AdminRepository = { findUsers, updateRole, dashboardStats, findAuditLogs };

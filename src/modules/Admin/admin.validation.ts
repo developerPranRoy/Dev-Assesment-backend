@@ -6,6 +6,4 @@ const changeRoleZodSchema = z.object({
   }),
 });
 
-export const AdminValidation = {
-  changeRoleZodSchema,
-};
+export const AdminValidation = { changeRoleZodSchema };
