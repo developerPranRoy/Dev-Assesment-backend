@@ -6,6 +6,4 @@ const inviteZodSchema = z.object({
   }),
 });
 
-export const InvitationValidation = {
-  inviteZodSchema,
-};
+export const InvitationValidation = { inviteZodSchema };

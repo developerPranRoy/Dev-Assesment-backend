@@ -28,9 +28,7 @@ const addProblemZodSchema = z.object({
 
 const changeStatusZodSchema = z.object({
   body: z.object({
-    status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"], {
-      required_error: "Status is required",
-    }),
+    status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"], { required_error: "Status is required" }),
   }),
 });
 
