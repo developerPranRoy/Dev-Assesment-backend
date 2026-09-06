@@ -1,30 +1,19 @@
 import httpStatus from "http-status";
 import config from "../config";
 import ApiError from "../shared/ApiError";
+import logger from "../shared/logger";
 
 type TestCase = { input: string; expectedOutput: string };
 type Judge0Result = { passed: boolean; output?: string };
 
-/**
- * Delegates execution to a self-hosted or public Judge0 instance rather
- * than running untrusted code in this process. Requires JUDGE0_API_URL —
- * throws NOT_IMPLEMENTED until that's configured.
- */
-const runTestCases = async (
-  code: string,
-  languageId: number,
-  testCases: TestCase[]
-): Promise<Judge0Result[]> => {
-  if (!config.judge0.apiUrl) {
-    throw new ApiError(
-      httpStatus.NOT_IMPLEMENTED,
-      "Code execution is not configured — set JUDGE0_API_URL"
-    );
-  }
+const CONCURRENCY = Number(process.env.JUDGE0_CONCURRENCY) || 4;
+const TIMEOUT_MS = Number(process.env.JUDGE0_TIMEOUT_MS) || 15_000;
 
-  const results: Judge0Result[] = [];
+const runOne = async (code: string, languageId: number, testCase: TestCase): Promise<Judge0Result> => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
-  for (const testCase of testCases) {
+  try {
     const response = await fetch(
       `${config.judge0.apiUrl}/submissions?base64_encoded=false&wait=true`,
       {
@@ -36,15 +25,51 @@ const runTestCases = async (
           stdin: testCase.input,
           expected_output: testCase.expectedOutput,
         }),
+        signal: controller.signal,
       }
     );
 
+    if (!response.ok) {
+      logger.warn({ status: response.status }, "judge0_non_ok_response");
+      return { passed: false };
+    }
+
     const result = (await response.json()) as { status?: { id: number }; stdout?: string };
-    results.push({
-      passed: result.status?.id === 3, // Judge0 status 3 = "Accepted"
-      output: result.stdout,
-    });
+    return { passed: result.status?.id === 3, output: result.stdout ?? undefined };
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AbortError") {
+      logger.warn({ languageId }, "judge0_timeout");
+      return { passed: false };
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
   }
+};
+
+const runTestCases = async (
+  code: string,
+  languageId: number,
+  testCases: TestCase[]
+): Promise<Judge0Result[]> => {
+  if (!config.judge0.apiUrl) {
+    throw new ApiError(httpStatus.NOT_IMPLEMENTED, "Code execution is not configured — set JUDGE0_API_URL");
+  }
+
+  const results: Judge0Result[] = new Array(testCases.length);
+  let idx = 0;
+
+  const worker = async (): Promise<void> => {
+    while (true) {
+      const i = idx++;
+      if (i >= testCases.length) break;
+      results[i] = await runOne(code, languageId, testCases[i]!);
+    }
+  };
+
+  await Promise.all(
+    Array.from({ length: Math.min(CONCURRENCY, testCases.length) }, () => worker())
+  );
 
   return results;
 };
