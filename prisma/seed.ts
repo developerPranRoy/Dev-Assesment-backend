@@ -54,6 +54,12 @@ async function main() {
     },
   });
 
+  await prisma.candidateProfile.upsert({
+    where: { userId: candidate.id },
+    update: {},
+    create: { userId: candidate.id },
+  });
+
   const company = await prisma.company.upsert({
     where: { id: "seed-company-acme" },
     update: {},

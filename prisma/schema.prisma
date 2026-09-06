@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 enum Role {
@@ -184,6 +185,7 @@ model Assessment {
   attempts    Attempt[]
 
   @@index([companyId, status])
+  @@index([companyId, status, createdAt(sort: Desc)])
 }
 
 model AssessmentProblem {
@@ -208,7 +210,10 @@ model Invitation {
   expiresAt      DateTime
   createdAt      DateTime         @default(now())
 
+  @@unique([assessmentId, candidateEmail])
   @@index([assessmentId, status])
+  @@index([token])
+  @@index([candidateEmail, status])
 }
 
 model Attempt {
@@ -228,6 +233,7 @@ model Attempt {
   submissions Submission[]
 
   @@unique([assessmentId, candidateId])
+  @@index([candidateId, status])
 }
 
 model Submission {
@@ -246,6 +252,7 @@ model Submission {
   createdAt     DateTime         @default(now())
 
   @@unique([attemptId, problemId])
+  @@index([attemptId, status])
 }
 
 model AuditLog {
@@ -259,6 +266,7 @@ model AuditLog {
   createdAt  DateTime @default(now())
 
   @@index([entityType, entityId])
+  @@index([actorId, createdAt(sort: Desc)])
 }
 
 model Payment {
@@ -275,4 +283,5 @@ model Payment {
   updatedAt      DateTime        @updatedAt
 
   @@index([companyId, status])
+  @@index([companyId, createdAt(sort: Desc)])
 }
