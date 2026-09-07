@@ -17,12 +17,21 @@ redis.on("reconnecting", () => logger.warn({}, "redis_reconnecting"));
 redis.on("ready", () => logger.info({}, "redis_ready"));
 
 export const connectRedis = async (): Promise<void> => {
-  if (redis.status === "wait") await redis.connect();
-  await redis.ping();
+  try {
+    if (redis.status === "wait") await redis.connect();
+    await redis.ping();
+  } catch (err) {
+    logger.error({ err, url: config.redis.url }, "redis_connect_failed");
+    logger.warn({}, "server_starting_without_redis — rate limiting and cache disabled");
+  }
 };
 
 export const disconnectRedis = async (): Promise<void> => {
-  if (redis.status !== "end") await redis.quit();
+  try {
+    if (redis.status !== "end") await redis.quit();
+  } catch {
+    // ignore disconnect errors
+  }
 };
 
 export default redis;
