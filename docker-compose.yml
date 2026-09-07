@@ -346,6 +346,7 @@ services:
       # - "443:443"   # Uncomment and add SSL cert volume when TLS is terminated here
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/blocklist.conf:/etc/nginx/conf.d/blocklist.conf:ro
       - nginx_cache:/var/cache/nginx
     depends_on:
       - auth

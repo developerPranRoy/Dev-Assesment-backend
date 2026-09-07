@@ -8,6 +8,7 @@ import globalErrorHandler from "./middlewares/globalErrorHandler";
 import notFound from "./middlewares/notFound";
 import { apiLimiter } from "./middlewares/rateLimiter";
 import requestId from "./middlewares/requestId";
+import ipBlock from "./middlewares/ipBlock";
 import config from "./config";
 import prisma from "./shared/prisma";
 import redis from "./lib/redis";
@@ -20,6 +21,7 @@ app.disable("x-powered-by");
 
 app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 app.use(requestId);
+app.use(ipBlock);
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   const start = Date.now();

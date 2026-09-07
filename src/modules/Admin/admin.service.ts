@@ -3,6 +3,7 @@ import { getPagination, buildMeta } from "../../shared/pagination";
 import { logAudit } from "../../shared/auditLog";
 import { AdminRepository } from "./admin.repository";
 import { cacheDel, cacheGetOrSet, CacheKeys, CACHE_TTL } from "../../lib/cache";
+import { blockIp, unblockIp, listBlockedIps } from "../../lib/ipBlocklist";
 
 const listUsers = async (query: { page?: string; limit?: string; role?: Role }) => {
   const { page, limit, skip } = getPagination(query);
@@ -26,4 +27,27 @@ const listAuditLogs = async (query: { page?: string; limit?: string }) => {
   return { logs, meta: buildMeta(page, limit, total) };
 };
 
-export const AdminService = { listUsers, changeUserRole, dashboardStats, listAuditLogs };
+const blockIpAddress = async (adminId: string, ip: string, ttlHours?: number) => {
+  const ttlSeconds = ttlHours ? ttlHours * 60 * 60 : undefined;
+  await blockIp(ip, ttlSeconds);
+  logAudit({ actorId: adminId, action: "ip.blocked", entityType: "IpBlock", entityId: ip, metadata: { ttlHours: ttlHours ?? "permanent" } });
+  return { ip, ttlHours: ttlHours ?? null, blocked: true };
+};
+
+const unblockIpAddress = async (adminId: string, ip: string) => {
+  await unblockIp(ip);
+  logAudit({ actorId: adminId, action: "ip.unblocked", entityType: "IpBlock", entityId: ip });
+  return { ip, blocked: false };
+};
+
+const listBlockedIpAddresses = () => listBlockedIps();
+
+export const AdminService = {
+  listUsers,
+  changeUserRole,
+  dashboardStats,
+  listAuditLogs,
+  blockIpAddress,
+  unblockIpAddress,
+  listBlockedIpAddresses,
+};

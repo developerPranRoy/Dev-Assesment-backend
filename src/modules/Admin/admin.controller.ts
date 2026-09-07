@@ -26,4 +26,30 @@ const listAuditLogs = catchAsync(async (req: Request, res: Response) => {
   sendResponse(res, { success: true, statusCode: httpStatus.OK, message: "Audit logs retrieved successfully", data: logs, meta });
 });
 
-export const AdminController = { listUsers, changeUserRole, dashboardStats, listAuditLogs };
+const blockIp = catchAsync(async (req: Request, res: Response) => {
+  const admin = requireUser(req);
+  const data = await AdminService.blockIpAddress(admin.id, req.body.ip, req.body.ttlHours);
+  sendResponse(res, { success: true, statusCode: httpStatus.OK, message: `IP ${req.body.ip} blocked successfully`, data });
+});
+
+const unblockIp = catchAsync(async (req: Request, res: Response) => {
+  const admin = requireUser(req);
+  const ip = req.params["ip"] ?? "";
+  const data = await AdminService.unblockIpAddress(admin.id, decodeURIComponent(ip));
+  sendResponse(res, { success: true, statusCode: httpStatus.OK, message: `IP ${ip} unblocked successfully`, data });
+});
+
+const listBlockedIps = catchAsync(async (_req: Request, res: Response) => {
+  const data = await AdminService.listBlockedIpAddresses();
+  sendResponse(res, { success: true, statusCode: httpStatus.OK, message: "Blocked IPs retrieved successfully", data });
+});
+
+export const AdminController = {
+  listUsers,
+  changeUserRole,
+  dashboardStats,
+  listAuditLogs,
+  blockIp,
+  unblockIp,
+  listBlockedIps,
+};

@@ -1,6 +1,8 @@
-import rateLimit, { Store, IncrementResponse } from "express-rate-limit";
+import rateLimit from "express-rate-limit";
+import { Store, IncrementResponse } from "express-rate-limit";
 import config from "../config";
 import redis from "../lib/redis";
+import { recordStrike } from "../lib/ipBlocklist";
 
 const { windowMs, max, authMax } = config.rateLimit;
 
@@ -49,6 +51,11 @@ export const apiLimiter = rateLimit({
   store: new RedisHitStore("rl:api"),
   message: { success: false, message: "Too many requests, please try again later", errors: [] },
   skip: (req) => req.method === "OPTIONS",
+  handler: (req, res, _next, options) => {
+    const ip = req.ip ?? "";
+    if (ip) recordStrike(ip).catch(() => undefined);
+    res.status(options.statusCode).json(options.message);
+  },
 });
 
 export const authLimiter = rateLimit({
@@ -59,4 +66,9 @@ export const authLimiter = rateLimit({
   store: new RedisHitStore("rl:auth"),
   message: { success: false, message: "Too many authentication attempts, please try again later", errors: [] },
   skip: (req) => req.method === "OPTIONS",
+  handler: (req, res, _next, options) => {
+    const ip = req.ip ?? "";
+    if (ip) recordStrike(ip).catch(() => undefined);
+    res.status(options.statusCode).json(options.message);
+  },
 });

@@ -6,4 +6,21 @@ const changeRoleZodSchema = z.object({
   }),
 });
 
-export const AdminValidation = { changeRoleZodSchema };
+const blockIpZodSchema = z.object({
+  body: z.object({
+    ip: z.string({ required_error: "IP address is required" }).ip(),
+    ttlHours: z.number().int().positive().optional(),
+  }),
+});
+
+const unblockIpZodSchema = z.object({
+  params: z.object({
+    ip: z.string({ required_error: "IP address is required" }),
+  }),
+});
+
+export const AdminValidation = {
+  changeRoleZodSchema,
+  blockIpZodSchema,
+  unblockIpZodSchema,
+};
