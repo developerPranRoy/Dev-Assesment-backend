@@ -65,11 +65,11 @@ COPY prisma ./prisma
 # Switch to non-root
 USER appuser
 
-EXPOSE 5000
+EXPOSE 10000
 
 # Health-check so Docker Swarm / Compose knows when the container is ready
 HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=3 \
-  CMD wget -qO- http://localhost:5000/health || exit 1
+  CMD wget -qO- http://localhost:${PORT:-10000}/health || exit 1
 
 # The SERVICE_NAME env var selects which routes / worker to start
 CMD ["sh", "-c", \
