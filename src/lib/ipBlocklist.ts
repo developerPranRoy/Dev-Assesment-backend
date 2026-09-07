@@ -5,7 +5,7 @@ const BLOCK_KEY = (ip: string) => `ip:block:${ip}`;
 const STRIKE_KEY = (ip: string) => `ip:strikes:${ip}`;
 
 const STRIKE_WINDOW_SECONDS = 60 * 10;
-const MAX_STRIKES = 5;
+const MAX_STRIKES = 10;
 const AUTO_BLOCK_TTL_SECONDS = 60 * 60 * 24;
 
 export const isIpBlocked = async (ip: string): Promise<boolean> => {
