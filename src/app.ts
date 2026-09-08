@@ -54,7 +54,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 app.use(apiLimiter);
 
-app.get("/health", (_req, res) => {
+app.get("/", (_req, res) => {
   res.status(200).json({ success: true, message: "Server is running", data: { service: config.serviceName } });
 });
 
