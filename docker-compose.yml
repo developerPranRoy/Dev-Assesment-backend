@@ -1,29 +1,11 @@
-# =============================================================================
-#  docker-compose — production-ready, million-user architecture
-#
-#  Services:
-#    postgres   — PostgreSQL 16 (primary)
-#    pgbouncer  — connection-pool proxy (transaction mode)
-#    redis      — BullMQ queue + rate-limit + cache
-#    migrate    — one-shot Prisma migrate deploy
-#    auth       — authentication microservice
-#    core       — companies / problems / assessments / admin
-#    exam       — attempts / submissions
-#    payment    — Stripe billing
-#    worker     — BullMQ grading worker
-#    nginx      — reverse proxy / load balancer
-# =============================================================================
 
-# ── Shared environment anchors ─────────────────────────────────────────────────
 x-app-env: &app-env
   NODE_ENV: production
   PORT: 5000
-  # Route app traffic through PgBouncer (connection_limit per service kept small)
   DATABASE_URL: postgresql://postgres:postgres@pgbouncer:5432/dev_assessment_platform?pgbouncer=true&connection_limit=5&pool_timeout=10
-  # Prisma migrations / schema introspection need a direct connection
   DIRECT_DATABASE_URL: postgresql://postgres:postgres@postgres:5432/dev_assessment_platform
   REDIS_URL: redis://redis:6379
-  COOKIE_SECURE: "true"     # MUST be true behind nginx HTTPS termination
+  COOKIE_SECURE: "true"    
   LOG_LEVEL: info
   SMTP_HOST: ${SMTP_HOST:-}
   SMTP_PORT: ${SMTP_PORT:-587}
@@ -47,13 +29,11 @@ x-app: &app
       condition: service_started
     migrate:
       condition: service_completed_successfully
-  # Production log driver — aggregate JSON logs in a central driver
   logging:
     driver: json-file
     options:
       max-size: "10m"
       max-file: "5"
-  # Default resource constraints — override per-service below as needed
   deploy:
     resources:
       limits:
@@ -69,7 +49,7 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     ports:
-      - "5433:5432"    # exposed on 5433 to avoid conflict with local postgres
+      - "5433:5432"   
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -84,7 +64,6 @@ services:
       timeout: 5s
       retries: 10
       start_period: 10s
-    # PostgreSQL tuning for production (adjust to your host RAM)
     command:
       - postgres
       - -c
@@ -161,7 +140,7 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     ports:
-      - "6379:6379"    # exposed to host for local npm run dev
+      - "6379:6379"    
     command: >
       redis-server
       --maxmemory 1gb
@@ -189,7 +168,6 @@ services:
           cpus: "0.1"
           memory: 256M
 
-  # ── One-shot migration runner ─────────────────────────────────────────────────
   migrate:
     build:
       context: .
@@ -208,7 +186,6 @@ services:
     networks:
       - internal
 
-  # ── Auth microservice ─────────────────────────────────────────────────────────
   auth:
     <<: *app
     environment:
@@ -235,7 +212,6 @@ services:
         delay: 5s
         max_attempts: 3
 
-  # ── Core microservice ─────────────────────────────────────────────────────────
   core:
     <<: *app
     environment:
@@ -262,7 +238,6 @@ services:
         delay: 5s
         max_attempts: 3
 
-  # ── Exam microservice ─────────────────────────────────────────────────────────
   exam:
     <<: *app
     environment:
@@ -289,7 +264,6 @@ services:
         delay: 5s
         max_attempts: 3
 
-  # ── Payment microservice ──────────────────────────────────────────────────────
   payment:
     <<: *app
     environment:
@@ -300,7 +274,7 @@ services:
     networks:
       - internal
     deploy:
-      replicas: 1           # Payment is stateless but Stripe webhook needs care
+      replicas: 1          
       resources:
         limits:
           cpus: "0.5"
@@ -313,14 +287,12 @@ services:
         delay: 5s
         max_attempts: 3
 
-  # ── Background grading worker ─────────────────────────────────────────────────
   worker:
     <<: *app
     environment:
       <<: *app-env
       SERVICE_NAME: worker
       WORKER_CONCURRENCY: "8"
-    # Workers don't serve HTTP — no port exposure needed
     networks:
       - internal
     deploy:
@@ -337,7 +309,6 @@ services:
         delay: 10s
         max_attempts: 5
 
-  # ── Nginx reverse proxy ───────────────────────────────────────────────────────
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped
