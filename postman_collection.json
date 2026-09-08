@@ -17,7 +17,7 @@
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:5000/api/v1"
+      "value": "https://dev-assesment-backend.onrender.com/api/v1"
     },
     {
       "key": "accessToken",

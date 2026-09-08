@@ -1,6 +1,6 @@
 # Developer Assessment & Coding Platform — API Documentation
 
-Base URL: `http://localhost:5000/api/v1` (replace with your deployed URL in production)
+Base URL: `https://dev-assesment-backend.onrender.com/api/v1`
 
 ## Response format
 
