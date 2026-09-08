@@ -1,5 +1,4 @@
-import rateLimit from "express-rate-limit";
-import { Store, IncrementResponse } from "express-rate-limit";
+import rateLimit, { Store, IncrementResponse } from "express-rate-limit";
 import config from "../config";
 import redis from "../lib/redis";
 import { recordStrike } from "../lib/ipBlocklist";
@@ -24,22 +23,34 @@ class RedisHitStore implements Store {
   init(): void {}
 
   async increment(key: string): Promise<IncrementResponse> {
-    const redisKey = `${this.prefix}:${key}`;
-    const result = (await redis.eval(INCR_EXPIRE_LUA, 1, redisKey, String(windowMs))) as [number, number];
-    return {
-      totalHits: Number(result[0]),
-      resetTime: new Date(Date.now() + Math.max(Number(result[1]), 0)),
-    };
+    try {
+      const redisKey = `${this.prefix}:${key}`;
+      const result = (await redis.eval(INCR_EXPIRE_LUA, 1, redisKey, String(windowMs))) as [number, number];
+      return {
+        totalHits: Number(result[0]),
+        resetTime: new Date(Date.now() + Math.max(Number(result[1]), 0)),
+      };
+    } catch {
+      return { totalHits: 0, resetTime: new Date(Date.now() + windowMs) };
+    }
   }
 
   async decrement(key: string): Promise<void> {
-    const redisKey = `${this.prefix}:${key}`;
-    const value = await redis.decr(redisKey);
-    if (value < 0) await redis.del(redisKey);
+    try {
+      const redisKey = `${this.prefix}:${key}`;
+      const value = await redis.decr(redisKey);
+      if (value < 0) await redis.del(redisKey);
+    } catch {
+      // ignore
+    }
   }
 
   async resetKey(key: string): Promise<void> {
-    await redis.del(`${this.prefix}:${key}`);
+    try {
+      await redis.del(`${this.prefix}:${key}`);
+    } catch {
+      // ignore
+    }
   }
 }
 

@@ -3,11 +3,11 @@ import config from "../config";
 import logger from "../shared/logger";
 
 const redis = new Redis(config.redis.url, {
-  maxRetriesPerRequest: 3,
-  enableReadyCheck: true,
+  maxRetriesPerRequest: null,
+  enableReadyCheck: false,
   lazyConnect: true,
   retryStrategy: (times) => Math.min(times * 200, 2_000),
-  connectTimeout: 5_000,
+  connectTimeout: 8_000,
   commandTimeout: 5_000,
   keepAlive: 10_000,
 });
@@ -30,7 +30,7 @@ export const disconnectRedis = async (): Promise<void> => {
   try {
     if (redis.status !== "end") await redis.quit();
   } catch {
-    // ignore disconnect errors
+    // ignore
   }
 };
 
