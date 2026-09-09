@@ -57,14 +57,14 @@ docker compose up --build
 
 This starts Postgres, Redis, PgBouncer, migrate, **auth / core / exam / payment** APIs, a grading **worker**, and **Nginx on port 80**. Scale a service with `docker compose up --scale exam=3`.
 
-Server runs on `http://localhost:5000` in monolith mode (`SERVICE_NAME=all`); health check at `GET /health`, readiness at `GET /ready`.
+Server runs on `https://dev-assesment-backend.onrender.com` in monolith mode (`SERVICE_NAME=all`); health check at `GET /health`, readiness at `GET /ready`.
 
 ### Testing Stripe webhooks locally
 
 The webhook route verifies a real Stripe signature, so a hand-crafted Postman request won't pass — use the [Stripe CLI](https://docs.stripe.com/stripe-cli) instead:
 
 ```bash
-stripe listen --forward-to localhost:5000/api/v1/payments/webhook
+stripe listen --forward-to https://dev-assesment-backend.onrender.com/api/v1/payments/webhook
 ```
 
 This prints a `whsec_...` value — put that in `STRIPE_WEBHOOK_SECRET`. Then call `POST /payments/initiate`, open the returned `checkoutUrl` in a browser, and pay with Stripe's test card `4242 4242 4242 4242` (any future expiry, any CVC). The CLI forwards the real webhook event to your local server.
@@ -121,8 +121,8 @@ Each module follows the same pattern: `repository` (Prisma access) → `service`
 
 ## Deployment
 
-Live URL: `[add after deploying to Vercel/Render]`
-Repository: `[add your GitHub repo URL]`
+Live URL: `[https://dev-assesment-backend.onrender.com]`
+Repository: `[https://github.com/developerPranRoy/Dev-Assesment-backend]`
 
 ## Known Simplifications
 
